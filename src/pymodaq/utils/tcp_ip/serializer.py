@@ -7,7 +7,7 @@ Created the 20/10/2023
 from base64 import b64encode, b64decode
 from enum import Enum
 import numbers
-from typing import Tuple, List, Union, TYPE_CHECKING
+from typing import Optional, Tuple, List, Union, TYPE_CHECKING
 
 
 import numpy as np
@@ -108,7 +108,7 @@ class Serializer:
     """Used to Serialize to bytes python objects, numpy arrays and PyMoDAQ DataWithAxes and
     DataToExport objects"""
 
-    def __init__(self, obj: SERIALIZABLE = None) -> None:
+    def __init__(self, obj: Optional[SERIALIZABLE] = None) -> None:
         self._bytes_string = b''
         self._obj = obj
 
@@ -373,10 +373,13 @@ class Serializer:
         self._bytes_string += bytes_string
         return bytes_string
 
-    def type_and_object_serialization(self, obj: SERIALIZABLE) -> bytes:
+    def type_and_object_serialization(self, obj: Optional[SERIALIZABLE] = None) -> bytes:
         """Serialize an object with its type, such that it can be retrieved by
         `DeSerializer.type_and_object_deserialization`.
         """
+
+        if obj is None and self._obj is not None:
+            obj = self._obj
 
         bytes_string = b''
         if isinstance(obj, DataWithAxes):

@@ -254,6 +254,7 @@ class TestObjectSerializationDeSerialization:
     ))
     def test_serialization(self, obj, serialized):
         assert Serializer().type_and_object_serialization(obj) == serialized
+        assert Serializer(obj).type_and_object_serialization() == serialized
         assert DeSerializer(serialized).type_and_object_deserialization() == obj
 
     def test_array(self):
@@ -264,6 +265,7 @@ class TestObjectSerializationDeSerialization:
                       b'\x00\x00\x00\x00\x00 @\x00\x00\x00\x00\x00\x00"@')
 
         assert Serializer().type_and_object_serialization(obj) == serialized
+        assert Serializer(obj).type_and_object_serialization() == serialized
         assert np.allclose(DeSerializer(serialized).type_and_object_deserialization(), obj)
 
     def test_dwa(self, get_data):
