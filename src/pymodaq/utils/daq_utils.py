@@ -624,7 +624,7 @@ def get_instrument_plugins():  # pragma: no cover
     logger.debug(f'Found {len(discovered_plugins)} installed plugins, trying to import them')
     viewer_types = ['0D', '1D', '2D', 'ND']
     plugin_list = []
-    for entrypoint in discovered_plugins:
+    for entrypoint in discovered_plugins_all:
         #print(f'Looking for valid instrument plugins in package: {module.value}')
 
         try:
