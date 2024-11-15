@@ -465,6 +465,8 @@ class View2D(ActionManager, QtCore.QObject):
                         tip='Flip the image left/right', checkable=True)
         self.add_action('rotate', 'Rotate', 'rotation2',
                         tip='Rotate the image', checkable=True)
+        self.add_action('opposite', 'Opposite', 'remove',
+                        tip='Take the opposite of the image', checkable=True)
         self.add_action('legend', 'Legend', 'RGB',
                         tip='Show the legend', checkable=True)
 
@@ -877,6 +879,8 @@ class Viewer2D(ViewerBase):
             data = np.fliplr(data)
         if self.view.is_action_checked('rotate'):
             data = np.flipud(np.transpose(data))
+        if self.view.is_action_checked('opposite'):
+            data = -data
         return data
 
     def set_visible_items(self):
@@ -917,6 +921,7 @@ class Viewer2D(ViewerBase):
         self.view.connect_action('flip_ud', slot=self.update_data)
         self.view.connect_action('flip_lr', slot=self.update_data)
         self.view.connect_action('rotate', slot=self.update_data)
+        self.view.connect_action('opposite', slot=self.update_data)
         self.view.connect_action('autolevels', slot=self.update_data)
         self.view.connect_action('isocurve', slot=self.update_data)
         self.view.histogrammer.gradient_changed.connect(lambda: setattr(self, '_is_gradient_manually_set', True))
