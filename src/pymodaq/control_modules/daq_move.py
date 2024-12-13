@@ -713,7 +713,8 @@ class DAQ_Move_Hardware(QObject):
             Uninitialize the stage closing the hardware.
 
         """
-        self.hardware.close()
+        if self.hardware is not None:
+            self.hardware.close()
 
         return "Stage uninitialized"
 
