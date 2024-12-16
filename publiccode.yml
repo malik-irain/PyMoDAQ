@@ -1,0 +1,96 @@
+publiccodeYmlVersion: "0.4"
+
+name: PyMoDAQ
+applicationSuite: PyMoDAQ_Framework
+url: "https://github.com/PyMoDAQ/PyMoDAQ.git"
+softwareVersion: "4.4.7"
+releaseDate: "2024-11-5"
+logo: "https://pymodaq.cnrs.fr/en/4.4.x/_static/splash.png"
+platforms:
+  - windows
+  - linux
+
+categories:
+  - application-development
+  - data-collection
+  - data-visualization
+  - data-analytics
+  - workflow-management
+  - it-development
+  - scientific-instrumentation
+
+usedBy:
+  - CEMES
+  - ATTO Lab
+  - CETHIL
+
+developmentStatus: stable
+
+softwareType: "standalone/desktop"
+
+intendedAudience:
+  scope:
+    - science-and-technology
+  countries:
+    - de
+    - fr
+
+description:
+  en:
+    localisedName: PyMoDAQ
+    shortDescription: >
+          PyMoDAQ is an python open-source software 
+          suite to efficiently setup and custom the
+          acquisition program of your experiment.
+
+    longDescription: >
+          PyMoDAQ is an advanced user interface to control and synchronize detectors and actuators. 
+          Each of these have their independent interface called respectively DAQ Viewer and DAQ Move control modules.
+          Detectors and actuators can be wrapped together in a DashBoard which implements a particular experimental setup. 
+          The Dashboard has functionalities to fully configure all its detectors and actuators and save their configurations in a preset file that will, at startup, load and initialize all modules.
+          As soon as the Dashboard has been configured, all the Dashboard Extensions can be used to perform advanced and automated tasks on the detectors and actuators.
+          - the DAQ Scan is the most common one. It allows to scan one or several actuators while acquiring and saving data from the detectors. 
+            A very large class or experiments can be performed with this extension.
+          - the DAQ Logger allows to log all the parameters of an experiment.
+          - the PID extension allows to lock a parameter of the experiment with a feedback loop on the actuators.
+          You can find a list of the supported instrument there : https://github.com/PyMoDAQ/pymodaq_plugin_manager/blob/main/README.md
+
+    documentation: "https://pymodaq.cnrs.fr/"
+    apiDocumentation: "https://pymodaq.cnrs.fr/en/4.4.x/api/api_doc.html"
+
+    features:
+       - modular architecture to easily integrate new instruments in your setup
+       - a common graphical interface and API
+       - data storage system compatible with the challenges of open data and traceability 
+    screenshots:
+       - https://pymodaq.cnrs.fr/en/5.0.x_dev/_images/dashboard.PNG
+       - https://pymodaq.cnrs.fr/en/5.0.x_dev/_images/main_ui.PNG
+       - https://pymodaq.cnrs.fr/en/5.0.x_dev/_images/plugin_manager.png
+    videos:
+       - https://www.youtube.com/watch?v=ZdYpQIZHMCY
+    awards:
+       - OpenScience Award 2024 of research OpenSource Software 
+
+legal:
+  license: MIT
+  mainCopyrightOwner: C.N.R.S.
+  repoOwner: C.N.R.S.
+
+maintenance:
+  type: "community"
+
+  contacts:
+    - name: Sebastien Weber
+      email: "Sebastien.Weber@cemes.fr"
+      affiliation: CEMES
+
+localisation:
+  localisationReady: true
+  availableLanguages:
+    - en
+
+dependsOn:
+  open:
+    - name: Qt
+      versionMin: "5"
+      optional: true
