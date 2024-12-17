@@ -114,7 +114,7 @@ class DAQScanUI(CustomApp, ViewerDispatcher):
 
         settings_widget = QtWidgets.QWidget()
         settings_widget.setLayout(QtWidgets.QVBoxLayout())
-        settings_widget.setMinimumWidth(220)
+        #settings_widget.setMinimumWidth(220)
 
         splitter_v_widget.addWidget(self.module_widget)
         splitter_v_widget.addWidget(self.plotting_widget)
