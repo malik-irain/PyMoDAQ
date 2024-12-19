@@ -26,8 +26,8 @@ from pymodaq_data.h5modules.data_saving import DataEnlargeableSaver
 
 
 from pymodaq.extensions.bayesian.utils import (get_bayesian_models, BayesianModelGeneric,
-                                               BayesianAlgorithm, UtilityKind,
-                                               UtilityParameters, StopType, StoppingParameters)
+                                               BayesianAlgorithm, AcquisitionKind,
+                                               AcquisitionParameters, StopType, StoppingParameters)
 from pymodaq.post_treatment.load_and_plot import LoaderPlotter
 from pymodaq.extensions.bayesian.utils import BayesianConfig
 from pymodaq.extensions.utils import CustomExt
@@ -45,6 +45,23 @@ class DataNames(BaseEnum):
     Actuators = 3
     Kappa = 4
 
+# def get_param_base_dict_tree(name, base_value=0, min_value=0, max_value=100):
+#     return {
+#         'title': name.capitalize(), 'name': name.lower(), 'type': 'slide', 'value': base_value,
+#         'min': min_value, 'max': max_value, 'subtype': 'log',
+#         'tip':  'Governs the exploration/exploitation tradeoff.'
+#                 'Lower prefers exploitation, higher prefers exploration.'
+#     }
+# def make_params_for_acquisition_function(name):
+#     AcquisitionKind[name].param_names
+# {
+#     'title': 'Exploration decay:', 'name': 'exploration_decay', 'type': 'float', 'value': 0.9,
+#     'tip': 'The tradeoff parameter is multiplied by this factor every iteration.'
+# },
+# {
+#     'title': 'Exploration decay delay:', 'name': 'exploration_decay_delay', 'type': 'int', 'value': 20,
+#      'tip': 'Number of iterations that must have passed before applying the decay to the tradeoff parameter.'},
+
 
 class BayesianOptimisation(CustomExt):
     """ PyMoDAQ extension of the DashBoard to perform the optimization of a target signal
@@ -56,30 +73,33 @@ class BayesianOptimisation(CustomExt):
     explored_viewer_name = 'algo/ProbedData'
     optimisation_done_signal = QtCore.Signal(DataToExport)
 
+    acquisition_functions_names = list(AcquisitionKind.keys())
     params = [
         {'title': 'Main Settings:', 'name': 'main_settings', 'expanded': True, 'type': 'group',
          'children': [
              {'title': 'Utility Function:', 'name': 'utility', 'expanded': False, 'type': 'group',
               'children': [
-                  {'title': 'Kind', 'name': 'kind', 'type': 'list',
-                   'limits': UtilityKind.to_dict_value()},
-                  {'title': 'Kappa:', 'name': 'kappa', 'type': 'slide', 'value': 2.576,
-                   'min': 0.001, 'max': 100, 'subtype': 'log',
-                   'tip': 'Parameter to indicate how closed are the next parameters sampled.'
-                          'Higher value = favors spaces that are least explored.'
-                          'Lower value = favors spaces where the regression function is the '
-                          'highest.'},
-                  {'title': 'Kappa actual:', 'name': 'kappa_actual', 'type': 'float', 'value': 2.576,
-                   'tip': 'Current value of the kappa parameter', 'readonly': True},
-                  {'title': 'xi:', 'name': 'xi', 'type': 'slide', 'value': 0,
-                   'tip': 'Governs the exploration/exploitation tradeoff.'
-                          'Lower prefers exploitation, higher prefers exploration.'},
-                  {'title': 'Kappa decay:', 'name': 'kappa_decay', 'type': 'float', 'value': 0.9,
-                   'tip': 'kappa is multiplied by this factor every iteration.'},
-                  {'title': 'Kappa decay delay:', 'name': 'kappa_decay_delay', 'type': 'int',
-                   'value': 20, 'tip': 'Number of iterations that must have passed before applying '
-                                      'the decay to kappa.'},
-              ]},
+                   {'title': 'Kind', 'name': 'kind', 'type': 'list', 'value':acquisition_functions_names[0],
+                    'limits': acquisition_functions_names},
+              #    + make_params_for_acquisition_function(acquisition_functions_names[0])
+              #     {'title': 'Kappa:', 'name': 'kappa', 'type': 'slide', 'value': 2.576,
+              #      'min': 0.001, 'max': 100, 'subtype': 'log',
+              #      'tip': 'Parameter to indicate how closed are the next parameters sampled.'
+              #             'Higher value = favors spaces that are least explored.'
+              #             'Lower value = favors spaces where the regression function is the '
+              #             'highest.'},
+              #     {'title': 'Kappa actual:', 'name': 'kappa_actual', 'type': 'float', 'value': 2.576,
+              #      'tip': 'Current value of the kappa parameter', 'readonly': True},
+              #     {'title': 'xi:', 'name': 'xi', 'type': 'slide', 'value': 0,
+              #      'tip': 'Governs the exploration/exploitation tradeoff.'
+              #             'Lower prefers exploitation, higher prefers exploration.'},
+              #     {'title': 'Exploration decay:', 'name': 'exploration_decay', 'type': 'float', 'value': 0.9,
+              #      'tip': 'kappa is multiplied by this factor every iteration.'},
+              #     {'title': 'Exploration decay delay:', 'name': 'exploration_decay_delay', 'type': 'int',
+              #      'value': 20, 'tip': 'Number of iterations that must have passed before applying '
+              #                         'the decay to kappa.'},
+                ]
+              },
              {'title': 'Stopping Criteria:', 'name': 'stopping', 'expanded': False, 'type': 'group',
               'children': [
                   {'title': 'Niteration', 'name': 'niter', 'type': 'int', 'value': 100, 'min': -1},
@@ -109,6 +129,7 @@ class BayesianOptimisation(CustomExt):
 
     def __init__(self, dockarea, dashboard):
         super().__init__(dockarea, dashboard)
+
 
         self.algorithm: Optional[BayesianAlgorithm] = None
         self.viewer_fitness: Optional[Viewer0D] = None
@@ -216,7 +237,11 @@ class BayesianOptimisation(CustomExt):
         ----------
         param: (Parameter) the parameter whose value just changed
         '''
-        if param.name() == 'model_class':
+
+        if param.name() == 'kind':
+
+            print(param.value())    
+        elif param.name() == 'model_class':
             self.get_set_model_params(param.value())
         elif param.name() in putils.iter_children(self.settings.child('models', 'model_params'), []):
             if self.model_class is not None:
@@ -237,9 +262,9 @@ class BayesianOptimisation(CustomExt):
 
     def update_utility_function(self):
         utility_settings = self.settings.child('main_settings', 'utility')
-        uparams = UtilityParameters(utility_settings['kind'], utility_settings['kappa'],
-                                    utility_settings['xi'], utility_settings['kappa_decay'],
-                                    utility_settings['kappa_decay_delay'])
+        uparams = AcquisitionParameters(utility_settings['kind'], utility_settings['kappa'],
+                                    utility_settings['xi'], utility_settings['exploration_decay'],
+                                    utility_settings['exploration_decay_delay'])
         self.command_runner.emit(utils.ThreadCommand('utility', uparams))
 
     def get_stopping_parameters(self) -> StoppingParameters:
@@ -542,13 +567,13 @@ class OptimisationRunner(QtCore.QObject):
             self.running = False
 
         elif command.command == 'utility':
-            utility_params: UtilityParameters = command.attribute
+            utility_params: AcquisitionParameters = command.attribute
             self.optimisation_algorithm.set_utility_function(
                 utility_params.kind,
                 kappa=utility_params.kappa,
                 xi=utility_params.xi,
-                kappa_decay=utility_params.kappa_decay,
-                kappa_decay_delay=utility_params.kappa_decay_delay)
+                exploration_decay=utility_params.exploration_decay,
+                exploration_decay_delay=utility_params.exploration_decay_delay)
 
         elif command.command == 'stopping':
             self.stopping_params: StoppingParameters = command.attribute
