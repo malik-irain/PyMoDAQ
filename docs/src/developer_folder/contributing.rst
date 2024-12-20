@@ -1,4 +1,4 @@
-  .. _contributors:
+  .. _contributing:
 
 Contributing
 ============
@@ -115,6 +115,7 @@ Math functions in ROI
 Scanning modes
 --------------
 
+  .. _contributors:
 
 Contributors
 ############
