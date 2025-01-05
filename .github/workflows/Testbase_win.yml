@@ -38,7 +38,7 @@ jobs:
         run: |
           pytest --cov=pymodaq --cov-report=xml -n 1
       - name: Upload coverage to codecov.io
-        uses: codecov/codecov-action@v5.0.7
+        uses: codecov/codecov-action@v5.1.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml
