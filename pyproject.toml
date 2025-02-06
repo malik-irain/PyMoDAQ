@@ -34,6 +34,7 @@ dependencies = [
     "pymodaq_utils",
     "pymodaq_gui",
     "pymodaq_data>=5.0.15",
+    "chardet",
     "easydict",
     "multipledispatch",
     "numpy < 2.0.0",
