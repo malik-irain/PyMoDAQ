@@ -1,0 +1,33 @@
+name: Compatibility verification (PyMoDAQ 5.0 -> plugins)
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Runs at midnight UTC every Sunday
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  setup-python:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'  # Adjust to specific version if needed
+      
+      - name: Install PyMoDAQ
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Run script
+        run: python ompatibility/checker.py
+
+      - name: Upload reports if failed
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: failure-reports
+          path: compatibility/reports
