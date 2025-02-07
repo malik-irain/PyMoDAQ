@@ -34,7 +34,6 @@ classifiers = [
 dependencies = [
     #"docutils==0.17.1",
     "easydict",
-    "chardet",
     "importlib_metadata; python_version<\"3.8\"",
     "multipledispatch",
     "numpy < 2.0.0",
