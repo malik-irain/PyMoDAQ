@@ -1,4 +1,4 @@
-name: Compatibility verification (PyMoDAQ 5.0 -> plugins)
+name: Compatibility verification (PyMoDAQ 4.4.x -> plugins)
 
 on:
   schedule:
@@ -27,7 +27,7 @@ jobs:
 
       - name: Upload reports if failed
         if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: failure-reports
           path: compatibility/reports
