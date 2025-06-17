@@ -61,7 +61,7 @@ class DAQ_Move_LECODirector(LECODirector, DAQ_Move_base):
     def __init__(self, parent=None, params_state=None) -> None:
         DAQ_Move_base.__init__(self, parent=parent,
                                params_state=params_state)
-        LECODirector.__init__(self, host=self.settings['host'])
+        LECODirector.__init__(self, host=self.settings['host'], port=self.settings['port'])
 
         self.register_rpc_methods((
             self.set_units,  # to set units accordingly to the one of the actor

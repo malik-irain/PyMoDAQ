@@ -35,7 +35,7 @@ class DAQ_xDViewer_LECODirector(LECODirector, DAQ_Viewer_base):
     def __init__(self, parent=None, params_state=None, grabber_type: str = "0D", **kwargs) -> None:
         DAQ_Viewer_base.__init__(self, parent=parent,
                                  params_state=params_state)
-        LECODirector.__init__(self, host=self.settings['host'])
+        LECODirector.__init__(self, host=self.settings['host'], port=self.settings['port'])
         for method in (
             self.set_data,
         ):
