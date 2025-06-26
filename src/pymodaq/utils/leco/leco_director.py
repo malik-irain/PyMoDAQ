@@ -36,6 +36,7 @@ leco_parameters = [
     {'title': 'Actor name:', 'name': 'actor_name', 'type': 'str', 'value': "actor_name",
      'tip': 'Name of the actor plugin to communicate with.'},
     {'title': 'Coordinator Host:', 'name': 'host', 'type': 'str', 'value': config('network', "leco-server", "host")},
+    {'title': 'Coordinator Port:', 'name': 'port', 'type': 'int', 'value': config('network', "leco-server", "port")},
     {'title': 'Settings PyMoDAQ Client:', 'name': 'settings_client', 'type': 'group', 'children': []},
 ]
 
