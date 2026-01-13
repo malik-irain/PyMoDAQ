@@ -146,7 +146,7 @@ jobs:
                   repo: repo,
                   run_id: run.id
                 });
-                has_artifact = artifacts.artifacts.some(a => a.name ===  `merged-coverage-${package.replaceAll("_","-")}`);
+                has_artifact = artifacts.artifacts.some(a => a.name ===  `merged-coverage-${package.split("_")[1] ?? package}`);
               }
               
               if (!has_artifact) {
