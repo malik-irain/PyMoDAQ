@@ -26,114 +26,178 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
+
+            /* ================================================================================= */
+            /* ================================================================================= */
+            /* =================================== Context ===================================== */
+            /* ================================================================================= */
+            /* ================================================================================= */
+
+            const sha    = context.payload.workflow_run.head_sha;
+            const branch = context.payload.workflow_run.head_branch;
+            const event  = context.payload.workflow_run.event;
+            const owner  = context.repo.owner
+            const repo   = context.repo.repo
+
+            /* ================================================================================= */
+            /* ================================================================================= */
+            /* ============================== Helper functions ================================= */
+            /* ================================================================================= */
+            /* ================================================================================= */
+
+            //Sleep `minutes` minutes (works with floats)
+            const sleep = (minutes) => new Promise(r => setTimeout(r, minutes * 60000));
+
+
+            //List all "Test for <package>" runs for the current event
+            const get_corresponding_test_runs = async (packages) => {
+              // List all the runs
+              const { data: runs } = await github.rest.actions.listWorkflowRunsForRepo({
+                owner: owner,
+                repo: repo,
+                head_sha: sha,
+                event: event
+              });
+              
+              // Filter the ones "Test for <package>"
+              const test_runs = {};
+              for (const package of packages) {
+                const run = runs.workflow_runs.find(r => r.name === `Test for ${package}`);
+                if (run) test_runs[package] = run;
+              }
+              
+              return test_runs;
+            };
+
+
+            // Wait `attempts` times for `minutes` minutes that `run_id` run is over
+            // return null if timed out.  
+            const wait_for_package_run = async (run_id, minutes = 1, attempts=60) => {
+              let i = 0;
+              while (i < attempts) {
+                await sleep(minutes);
+                const { data: run } = await github.rest.actions.getWorkflowRun({
+                  owner: owner,
+                  repo: repo,
+                  run_id: run_id
+                });
+                if (run.status === 'completed') {
+                  return run;
+                }
+                i++;
+              }
+              return null;
+            };
+
+            // Return a workflow by its name
+            const get_workflow_by_name = async (name) => {
+              const { data: workflows } = await github.rest.actions.listRepoWorkflows({
+                owner: owner,
+                repo: repo
+              });
+              
+              return workflows.workflows.find(w => w.name === name);
+            };
+
+
+            /* ================================================================================= */
+            /* ================================================================================= */
+            /* ================================== Entrypoint =================================== */
+            /* ================================================================================= */
+            /* ================================================================================= */
+
             const packages = ['pymodaq_utils', 'pymodaq_data', 'pymodaq_gui', 'pymodaq'];
-            const headSha = context.payload.workflow_run.head_sha;
-            const headBranch = context.payload.workflow_run.head_branch;
-            const event = context.payload.workflow_run.event;
+            console.log(`SHA: ${sha}, Branch: ${branch}, Event: ${event}\n`);
             
-            console.log(`SHA: ${headSha}, Branch: ${headBranch}, Event: ${event}\n`);
-            
-            // Wait 10 minutes so that test mostly finishes
-            await new Promise(r => setTimeout(r, 10*60000));
+
+            //Wait 30 seconds so that we're "sure" that everything else is started
+            await sleep(0.5);
+
             // Get all test runs for this commit
-            const { data: runs } = await github.rest.actions.listWorkflowRunsForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              head_sha: headSha,
-              event: event
-            });
-            
-            const testRuns = {};
-            for (const pkg of packages) {
-              const run = runs.workflow_runs.find(r => r.name === `Test for ${pkg}`);
-              if (run) testRuns[pkg] = run;
-            }
-            
+            const test_runs = await get_corresponding_test_runs(packages);
+
             // Wait for in-progress runs
-            for (const pkg of packages) {
-              if (testRuns[pkg]?.status !== 'completed') {
-                console.log(`Waiting for ${pkg}...`);
-                let attempts = 0;
-                while (attempts < 60) {
-                  await new Promise(r => setTimeout(r, 1*60000));
-                  const { data: run } = await github.rest.actions.getWorkflowRun({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    run_id: testRuns[pkg].id
-                  });
-                  if (run.status === 'completed') {
-                    testRuns[pkg] = run;
-                    console.log(`${pkg} completed`);
-                    break;
-                  }
-                  attempts++;
+            // For each package, is there's a run not completed, we wait until it's completion
+            for (const package of packages) {
+              if (test_runs[package]?.status !== 'completed') {
+                console.log(`Waiting for initial run of ${package}...`);
+                const run = await wait_for_package_run(test_runs[package].id);
+
+                if (run){
+                  console.log(`Initial run of ${package} is over.`);
+                  test_runs[package] = run;
+                }
+                else {
+                  console.log(`Waiting for initial run of ${package} timed out.`);
                 }
               }
             }
-            
-            // Check for missing artifacts and trigger tests
-            for (const pkg of packages) {
-              const run = testRuns[pkg];
-              let hasArtifact = false;
+
+            // For each package_name, get the run, and check if one of its artifact is "merged-coverage-<package-name>"
+            // If a package doesn't have an artifact, keep track of it
+            const packages_without_coverage_artifact = [];
+            for (const package of packages) {
+              const run = test_runs[package];
+              let has_artifact = false;
               
               if (run) {
                 const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
+                  owner: owner,
+                  repo: repo,
                   run_id: run.id
                 });
-                hasArtifact = artifacts.artifacts.some(a => a.name === `coverage-${pkg}`);
+                has_artifact = artifacts.artifacts.some(a => a.name ===  `merged-coverage-${package.replaceAll("_","-")}`);
               }
               
-              if (!hasArtifact) {
-                console.log(`Triggering test for ${pkg}...`);
-                
-                const { data: workflows } = await github.rest.actions.listRepoWorkflows({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo
+              if (!has_artifact) {
+                console.log(`${package} is missing coverage artifact`);
+                packages_without_coverage_artifact.push(package);
+              }
+            }
+
+
+            // For each package with a missing coverage artifact, trigger a run for its test
+            const triggered_runs = {};
+            for (const package of packages_without_coverage_artifact) {
+              console.log(`Triggering test for ${package}...`);
+
+              
+              const workflow = await get_workflow_by_name(`Test for ${package}`);
+              if (workflow) {
+                await github.rest.actions.createWorkflowDispatch({
+                  owner: owner,
+                  repo: repo,
+                  workflow_id: workflow.id,
+                  ref: branch
                 });
-                
-                const workflow = workflows.workflows.find(w => w.name === `Test for ${pkg}`);
-                if (workflow) {
-                  await github.rest.actions.createWorkflowDispatch({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    workflow_id: workflow.id,
-                    ref: headBranch
-                  });
-                  
-                  // Wait for new run to appear and complete (10 minutes should be enough)
-                  await new Promise(r => setTimeout(r, 10*60000));
-                  
-                  const { data: newRuns } = await github.rest.actions.listWorkflowRuns({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    workflow_id: workflow.id,
-                    branch: headBranch,
-                    per_page: 1
-                  });
-                  
-                  if (newRuns.workflow_runs[0]) {
-                    const runId = newRuns.workflow_runs[0].id;
-                    console.log(`Waiting for triggered ${pkg}...`);
-                    
-                    let attempts = 0;
-                    while (attempts < 60) {
-                      await new Promise(r => setTimeout(r, 1*60000));
-                      const { data: run } = await github.rest.actions.getWorkflowRun({
-                        owner: context.repo.owner,
-                        repo: context.repo.repo,
-                        run_id: runId
-                      });
-                      if (run.status === 'completed') {
-                        testRuns[pkg] = run;
-                        console.log(`${pkg} completed`);
-                        break;
-                      }
-                      attempts++;
-                    }
+
+                for (let i = 0; i < 30; i++) {
+                  await sleep(0.5);
+                  const runs = await get_corresponding_test_runs([package]);
+                  if (runs[package]) {
+                    console.log(`Triggered ${package}, run id = ${runs[package].id}`);
+                    triggered_runs[package] = runs[package];
+                    break;
+                  }
+                  else{
+                    console.log(`Failed to detect triggered run for ${package}`)
                   }
                 }
+              }
+            }
+
+            // Sleep for 10 minutes should be enough for all test runs to be over
+            await sleep(10);
+
+            //Wait for each triggered run to complete
+            for(const package of Object.keys(triggered_runs)) {
+              console.log(`Waiting for triggered run of ${package}...`);
+              const run = await wait_for_package_run(triggered_runs[package].id);
+              if (run){
+                  console.log(`Triggered run of ${package} is over.`);
+              }
+              else {
+                console.log(`Waiting for triggered run of ${package} timed out.`);
               }
             }
       - name: Download merged coverage artifacts
