@@ -20,6 +20,7 @@ from qtpy.QtWidgets import (
     QDialogButtonBox,
     QMessageBox,
 )
+
 from time import perf_counter
 import numpy as np
 

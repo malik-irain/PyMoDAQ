@@ -119,7 +119,11 @@ jobs:
             // Wait for in-progress runs
             // For each package, is there's a run not completed, we wait until it's completion
             for (const package of packages) {
-              if (test_runs[package]?.status !== 'completed') {
+              if (!test_runs[package]){
+                continue;
+              }
+
+              if (test_runs[package].status !== 'completed') {
                 console.log(`Waiting for initial run of ${package}...`);
                 const run = await wait_for_package_run(test_runs[package].id);
 
