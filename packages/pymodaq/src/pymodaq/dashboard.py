@@ -21,6 +21,7 @@ from qtpy.QtWidgets import (
     QMessageBox,
 )
 
+
 from time import perf_counter
 import numpy as np
 
