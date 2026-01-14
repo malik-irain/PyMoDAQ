@@ -33,9 +33,9 @@ jobs:
             /* ================================================================================= */
             /* ================================================================================= */
 
-            const sha    = context.payload.workflow_run?.head_sha;
-            const branch = context.payload.workflow_run?.head_branch;
-            const event  = context.payload.workflow_run?.event;
+            const sha    = process.env.GITHUB_SHA;
+            const branch = process.env.GITHUB_REF_NAME;
+            const event  = process.env.GITHUB_EVENT_NAME;
             const owner  = context.repo.owner
             const repo   = context.repo.repo
 
@@ -178,17 +178,14 @@ jobs:
             // Otherwise, download it
             const packages_without_coverage_artifact = [];
             for (const package of packages) {
-              let artifact = null;
+              console.log(`Looking for artifacts in ${package}`)
+              const { data: artifacts } = await github.rest.actions.listArtifactsForRepo({
+                owner: owner,
+                repo: repo,
+                name : `merged-coverage-${package.split("_")[1] ?? package}`
+              });
 
-              if (test_runs[package]) {
-                console.log(`Looking for artifacts in ${package}`)
-                const { data: artifacts } = await github.rest.actions.listArtifactsForRepo({
-                  owner: owner,
-                  repo: repo,
-                  name : `merged-coverage-${package.split("_")[1] ?? package}`
-                });
-                artifact = artifacts.artifacts?.[0]
-              }
+              let artifact = artifacts.artifacts?.[0]
 
               if (artifact) {
                 await save_artifact(artifact)
@@ -213,7 +210,7 @@ jobs:
                   owner: owner,
                   repo: repo,
                   workflow_id: workflow.id,
-                  ref: branch
+                  ref : branch
                 });
 
                 for (let i = 0; i < 30; i++) {
