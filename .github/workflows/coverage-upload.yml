@@ -26,7 +26,6 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-
             /* ================================================================================= */
             /* ================================================================================= */
             /* =================================== Context ===================================== */
@@ -53,7 +52,8 @@ jobs:
             //Sleep `minutes` minutes (works with floats)
             const sleep = (minutes) => new Promise(r => setTimeout(r, minutes * 60000));
 
-
+            //Check if a json object contains something
+            const is_empty = (json) => Object.keys(json).length === 0;
 
             //List all "Test for <package>" runs for the current event
             const get_corresponding_test_runs = async (packages, _event=event, strict=false) => {
@@ -228,35 +228,37 @@ jobs:
               }
             }
 
-            // Sleep for 10 minutes should be enough for all test runs to be over
-            await sleep(10);
+            if (!is_empty(triggered_runs)){
+              // Sleep for 10 minutes should be enough for all test runs to be over
+              await sleep(10);
 
-            //Wait for each triggered run to complete
-            for(const package of Object.keys(triggered_runs)) {
-              console.log(`Waiting for triggered run of ${package}...`);
-              const run = await wait_for_run_completion(triggered_runs[package].id);
-              if (run){
-                  console.log(`Triggered run of ${package} is over.`);
-              
-                  const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
-                    owner: owner,
-                    repo: repo,
-                    run_id: test_runs[package].id
-                  });
-              
-                  const artifact = artifacts.artifacts.find(a => a.name ===  `merged-coverage-${package.split("_")[1] ?? package}`);
-              
-                  if (artifact) {
-                    await save_artifact(artifact)
-                    console.log(`Saved artifact ${artifact.name} for ${package}`)
-                  }
-                  else {
-                    console.log(`${package} is missing coverage artifact`);
-                    packages_without_coverage_artifact.push(package);
-                  }
-              }
-              else {
-                console.log(`Waiting for triggered run of ${package} timed out.`);
+              //Wait for each triggered run to complete
+              for(const package of Object.keys(triggered_runs)) {
+                console.log(`Waiting for triggered run of ${package}...`);
+                const run = await wait_for_run_completion(triggered_runs[package].id);
+                if (run){
+                    console.log(`Triggered run of ${package} is over.`);
+                
+                    const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
+                      owner: owner,
+                      repo: repo,
+                      run_id: test_runs[package].id
+                    });
+                
+                    const artifact = artifacts.artifacts.find(a => a.name ===  `merged-coverage-${package.split("_")[1] ?? package}`);
+                
+                    if (artifact) {
+                      await save_artifact(artifact)
+                      console.log(`Saved artifact ${artifact.name} for ${package}`)
+                    }
+                    else {
+                      console.log(`${package} is missing coverage artifact`);
+                      packages_without_coverage_artifact.push(package);
+                    }
+                }
+                else {
+                  console.log(`Waiting for triggered run of ${package} timed out.`);
+                }
               }
             }
       # - name: Download merged coverage artifacts
