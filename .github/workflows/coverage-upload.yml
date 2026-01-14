@@ -26,6 +26,7 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
+
             /* ================================================================================= */
             /* ================================================================================= */
             /* =================================== Context ===================================== */
@@ -81,7 +82,7 @@ jobs:
                   });
 
                   run = data.workflow_runs.find(r => r.name === `Test for ${package}`);
-                  if (run) break; // stop as soon as we find a match
+                  if (run) break; // stop as soon as a match is found
                 }
 
                 test_runs[package] = run;
@@ -92,7 +93,7 @@ jobs:
 
             // Wait `attempts` times for `minutes` minutes that `run_id` run is over
             // return null if timed out.  
-            const wait_for_run_completion = async (run_id, minutes = 1, attempts=60) => {
+            const wait_for_run_completion = async (run_id, minutes = 1, attempts=10) => {
               let i = 0;
               while (i < attempts) {
                 await sleep(minutes);
@@ -177,18 +178,18 @@ jobs:
             // Otherwise, download it
             const packages_without_coverage_artifact = [];
             for (const package of packages) {
-              let has_artifact = false;
               let artifact = null;
-              
+
               if (test_runs[package]) {
-                const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
+                console.log(`Looking for artifacts in ${package}`)
+                const { data: artifacts } = await github.rest.actions.listArtifactsForRepo({
                   owner: owner,
                   repo: repo,
-                  run_id: test_runs[package].id
+                  name : `merged-coverage-${package.split("_")[1] ?? package}`
                 });
-                artifact = artifacts.artifacts.find(a => a.name ===  `merged-coverage-${package.split("_")[1] ?? package}`);
+                artifact = artifacts.artifacts?.[0]
               }
-              
+
               if (artifact) {
                 await save_artifact(artifact)
                 console.log(`Saved artifact ${artifact.name} for ${package}`)
@@ -197,7 +198,6 @@ jobs:
                 console.log(`${package} is missing coverage artifact`);
                 packages_without_coverage_artifact.push(package);
               }
-
             }
 
 
