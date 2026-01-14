@@ -1,15 +1,6 @@
 name: Coverage upload
 
 on:
-  pull_request:
-    branches:
-      - '*'
-      - '!badges' # to exclude execution if someone PR on this branch (shouldn't happen)
-  push:
-    branches:
-      - '*'
-      - '!badges' # to exclude execution if someone pushes on this branch (shouldn't happen)
-
   workflow_dispatch:
   workflow_run:
     workflows:
@@ -31,7 +22,7 @@ jobs:
   collect-coverage:
     runs-on: ubuntu-latest
     steps:
-      - name: Wait and collect coverage
+      - name: Ensure coverage is generated and download artifacts
         uses: actions/github-script@v8
         with:
           script: |
@@ -46,6 +37,11 @@ jobs:
             const event  = context.payload.workflow_run?.event;
             const owner  = context.repo.owner
             const repo   = context.repo.repo
+
+            const artifact_save_base_path = "~/"
+
+            const fs = require("fs");
+            const path = require("path");
 
             /* ================================================================================= */
             /* ================================================================================= */
@@ -73,7 +69,7 @@ jobs:
 
               const strategies = strict ? [base_strategies[0]] : base_strategies;
 
-              for (const pkg of packages) {
+              for (const package of packages) {
                 let run = null;
 
                 // Try each strategy untila run is found
@@ -84,11 +80,11 @@ jobs:
                     ...strategy,
                   });
 
-                  run = data.workflow_runs.find(r => r.name === `Test for ${pkg}`);
+                  run = data.workflow_runs.find(r => r.name === `Test for ${package}`);
                   if (run) break; // stop as soon as we find a match
                 }
 
-                test_runs[pkg] = run;
+                test_runs[package] = run;
               }
 
               return test_runs;
@@ -124,6 +120,17 @@ jobs:
             };
 
 
+            const save_artifact = async (artifact) => {
+              const {data : artifact_data } = await github.rest.actions.downloadArtifact({
+                owner : owner,
+                repo : repo,
+                artifact_id : artifact.id,
+                archive_format : "zip"
+              });
+
+              const filename = path.join(artifact_save_base_path, `${artifact.name}.zip`)
+              fs.writeFileSync(filename, Buffer.from(artifact_data, "base64"))
+            }
             /* ================================================================================= */
             /* ================================================================================= */
             /* ================================== Entrypoint =================================== */
@@ -133,6 +140,9 @@ jobs:
             const packages = ['pymodaq_utils', 'pymodaq_data', 'pymodaq_gui', 'pymodaq'];
             console.log(`SHA: ${sha}, Branch: ${branch}, Event: ${event}\n`);
 
+
+            //Create artifact download folder
+            if (!fs.existsSync(artifact_save_base_path)) fs.mkdirSync(artifact_save_base_path, { recursive: true });
 
             //Wait 30 seconds so that we're "sure" that everything else is started
             await sleep(0.5);
@@ -164,6 +174,7 @@ jobs:
             // For each package_name, get the corresponding run, 
             // and check if one of its artifact is "merged-coverage-<package-name>"
             // If a package doesn't have an artifact, keep track of it
+            // Otherwise, download it
             const packages_without_coverage_artifact = [];
             for (const package of packages) {
               let has_artifact = false;
@@ -174,13 +185,18 @@ jobs:
                   repo: repo,
                   run_id: test_runs[package].id
                 });
-                has_artifact = artifacts.artifacts.some(a => a.name ===  `merged-coverage-${package.split("_")[1] ?? package}`);
+                const artifact = artifacts.artifacts.find(a => a.name ===  `merged-coverage-${package.split("_")[1] ?? package}`);
               }
               
-              if (!has_artifact) {
+              if (artifact) {
+                await save_artifact(artifact)
+                console.log(`Saved artifact ${artifact.name} for ${package}`)
+              }
+              else {
                 console.log(`${package} is missing coverage artifact`);
                 packages_without_coverage_artifact.push(package);
               }
+
             }
 
 
@@ -223,20 +239,38 @@ jobs:
               const run = await wait_for_run_completion(triggered_runs[package].id);
               if (run){
                   console.log(`Triggered run of ${package} is over.`);
+              
+                  const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
+                    owner: owner,
+                    repo: repo,
+                    run_id: test_runs[package].id
+                  });
+              
+                  const artifact = artifacts.artifacts.find(a => a.name ===  `merged-coverage-${package.split("_")[1] ?? package}`);
+              
+                  if (artifact) {
+                    await save_artifact(artifact)
+                    console.log(`Saved artifact ${artifact.name} for ${package}`)
+                  }
+                  else {
+                    console.log(`${package} is missing coverage artifact`);
+                    packages_without_coverage_artifact.push(package);
+                  }
               }
               else {
                 console.log(`Waiting for triggered run of ${package} timed out.`);
               }
             }
-      - name: Download merged coverage artifacts
-        uses: actions/download-artifact@v5.0.0
-        with:
-          pattern: "merged-coverage-*"
-          path: artifacts
-          merge-multiple: true
+      # - name: Download merged coverage artifacts
+      #   uses: actions/download-artifact@v5.0.0
+      #   with:
+      #     pattern: "merged-coverage-*"
+      #     path: artifacts
+      #     merge-multiple: true
 
       - name: Merge coverage files and convert to xml
         run: |
+          ls 
           python -m pip install coverage
           coverage combine ./merged_coverage_*
           coverage xml -i
