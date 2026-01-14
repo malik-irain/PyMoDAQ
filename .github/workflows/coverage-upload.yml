@@ -178,6 +178,7 @@ jobs:
             const packages_without_coverage_artifact = [];
             for (const package of packages) {
               let has_artifact = false;
+              let artifact = null;
               
               if (test_runs[package]) {
                 const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
@@ -185,7 +186,7 @@ jobs:
                   repo: repo,
                   run_id: test_runs[package].id
                 });
-                const artifact = artifacts.artifacts.find(a => a.name ===  `merged-coverage-${package.split("_")[1] ?? package}`);
+                artifact = artifacts.artifacts.find(a => a.name ===  `merged-coverage-${package.split("_")[1] ?? package}`);
               }
               
               if (artifact) {
