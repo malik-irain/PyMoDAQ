@@ -127,11 +127,33 @@ jobs:
               return workflows.workflows.find(w => w.name === name);
             };
 
+            // Return the reference of an artifact by its name, and an optional associated 
+            // run id. If run id is provided the artifact is fetched from this run,
+            // otherwise from any workflow, The first one found (most recent) is returned
+            const get_artifact_from_name = async (name, run_id=undefined) => {
+              let artifacts;
+              if (run_id) {
+                ({ data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
+                  owner: owner,
+                  repo: repo,
+                  run_id: run_id,
+                  name :  name
+                }));
+              } 
+              else {
+                ({ data: artifacts } = await github.rest.actions.listArtifactsForRepo({
+                  owner: owner,
+                  repo: repo,
+                  name : name
+                }));
+              }
+              return artifacts.artifacts?.[0]
+            };
 
             // Download and save an artifact as zip file from its name.
             // It is saved in the globally defined location `artifact_save_base_path`
             const save_artifact = async (artifact) => {
-              const {data : artifact_data } = await github.rest.actions.downloadArtifact({
+              const {data : data } = await github.rest.actions.downloadArtifact({
                 owner : owner,
                 repo : repo,
                 artifact_id : artifact.id,
@@ -139,8 +161,8 @@ jobs:
               });
 
               const filename = path.join(artifact_save_base_path, `${artifact.name}.zip`)
-              fs.writeFileSync(filename, Buffer.from(artifact_data, "base64"))
-            }
+              fs.writeFileSync(filename, Buffer.from(data, "base64"))
+            };
             /* ================================================================================= */
             /* ================================================================================= */
             /* ================================== Entrypoint =================================== */
@@ -190,14 +212,8 @@ jobs:
             const packages_without_coverage_artifact = [];
             for (const package of packages) {
               console.log(`Looking for artifacts in ${package}`)
-              const { data: artifacts } = await github.rest.actions.listArtifactsForRepo({
-                owner: owner,
-                repo: repo,
-                name : `merged-coverage-${package.split("_")[1] ?? package}`
-              });
-
-              let artifact = artifacts.artifacts?.[0]
-
+              const artifact = await get_artifact_from_name(`merged-coverage-${package.split("_")[1] ?? package}`);
+      
               if (artifact) {
                 await save_artifact(artifact)
                 console.log(`Saved artifact ${artifact.name} for ${package}`)
@@ -225,18 +241,14 @@ jobs:
                 });
 
                 //Try to get the run corresponding to the started workflow
-                // by polling the API each 10 seconds. 
-                for (let i = 0; i < 60; i++) {
-                  await sleep(10);
-                  const runs = await get_corresponding_test_runs([package], _event='workflow_dispatch', strict=true);
-                  if (runs[package]) {
-                    console.log(`Triggered ${package}, run id = ${runs[package].id}`);
-                    triggered_runs[package] = runs[package];
-                    break;
-                  }
-                  else{
-                    console.log(`Failed to detect triggered run for ${package}`)
-                  }
+                // by polling the API after 30 seconds. 
+                await sleep(10);
+                ({ [package] : triggered_runs[package]} = await get_corresponding_test_runs([package], _event='workflow_dispatch', strict=true));
+                if (triggered_runs[package]) {
+                  console.log(`Triggered ${package}, run id = ${triggered_runs[package].id}`);
+                }
+                else{
+                  console.log(`Failed to detect triggered run for ${package}`)  
                 }
               }
             }
@@ -252,14 +264,7 @@ jobs:
                 const run = await wait_for_run_completion(triggered_runs[package].id);
                 if (run){
                     console.log(`Triggered run of ${package} is over.`);
-                
-                    const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
-                      owner: owner,
-                      repo: repo,
-                      run_id: test_runs[package].id
-                    });
-                
-                    const artifact = artifacts.artifacts.find(a => a.name ===  `merged-coverage-${package.split("_")[1] ?? package}`);
+                    const artifact = await get_artifact_from_name(`merged-coverage-${package.split("_")[1] ?? package}`, run.id);
                 
                     if (artifact) {
                       await save_artifact(artifact)
@@ -267,7 +272,6 @@ jobs:
                     }
                     else {
                       console.log(`${package} is missing coverage artifact`);
-                      packages_without_coverage_artifact.push(package);
                     }
                 }
                 else {
@@ -290,3 +294,5 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.xml
+
+           await github.rest.actions.listWorkflowRunArtifacts({owner,repo, run_id : run.id, name :  `merged-coverage-${package.split("_")[1] ?? package}`});
