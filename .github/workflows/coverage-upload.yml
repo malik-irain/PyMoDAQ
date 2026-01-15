@@ -32,7 +32,7 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-           /* ================================================================================= */
+            /* ================================================================================= */
             /* ================================================================================= */
             /* =================================== Context ===================================== */
             /* ================================================================================= */
@@ -279,8 +279,6 @@ jobs:
                 }
               }
             }
-
-
       - name: Merge coverage files and convert to xml
         run: |
           unzip \*.zip
@@ -294,5 +292,3 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.xml
-
-           await github.rest.actions.listWorkflowRunArtifacts({owner,repo, run_id : run.id, name :  `merged-coverage-${package.split("_")[1] ?? package}`});
