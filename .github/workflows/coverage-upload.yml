@@ -22,6 +22,12 @@ jobs:
   collect-coverage:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v5.0.0
+        with:
+          fetch-depth: 0
+ 
+
       - name: Ensure coverage is generated and download artifacts
         uses: actions/github-script@v8
         with:
@@ -49,8 +55,8 @@ jobs:
             /* ================================================================================= */
             /* ================================================================================= */
 
-            //Sleep `minutes` minutes (works with floats)
-            const sleep = (minutes) => new Promise(r => setTimeout(r, minutes * 60000));
+            //Sleep `seconds` seconds (works with floats)
+            const sleep = (seconds) => new Promise(r => setTimeout(r, seconds * 1000));
 
             //Check if a json object contains something
             const is_empty = (json) => Object.keys(json).length === 0;
@@ -91,12 +97,12 @@ jobs:
               return test_runs;
             };
 
-            // Wait `attempts` times for `minutes` minutes that `run_id` run is over
+            // Wait `attempts` times for `seconds` seconds that `run_id` run is over
             // return null if timed out.  
-            const wait_for_run_completion = async (run_id, minutes = 1, attempts=10) => {
+            const wait_for_run_completion = async (run_id, seconds = 60, attempts=10) => {
               let i = 0;
               while (i < attempts) {
-                await sleep(minutes);
+                await sleep(seconds);
                 const { data: run } = await github.rest.actions.getWorkflowRun({
                   owner: owner,
                   repo: repo,
@@ -145,8 +151,8 @@ jobs:
             //Create artifact download folder
             if (!fs.existsSync(artifact_save_base_path)) fs.mkdirSync(artifact_save_base_path, { recursive: true });
 
-            //Wait 30 seconds so that we're "sure" that everything else is started
-            await sleep(0.5);
+            //Wait 10 seconds so that we're "sure" that everything else is started
+            await sleep(10);
 
             // Get last test runs for each package in this commit (if they exist)
             const test_runs = await get_corresponding_test_runs(packages);
@@ -214,7 +220,7 @@ jobs:
                 });
 
                 for (let i = 0; i < 30; i++) {
-                  await sleep(0.5);
+                  await sleep(10);
                   const runs = await get_corresponding_test_runs([package], _event='workflow_dispatch', strict=true);
                   if (runs[package]) {
                     console.log(`Triggered ${package}, run id = ${runs[package].id}`);
@@ -230,7 +236,7 @@ jobs:
 
             if (!is_empty(triggered_runs)){
               // Sleep for 10 minutes should be enough for all test runs to be over
-              await sleep(10);
+              await sleep(10*60);
 
               //Wait for each triggered run to complete
               for(const package of Object.keys(triggered_runs)) {
@@ -261,12 +267,6 @@ jobs:
                 }
               }
             }
-      # - name: Download merged coverage artifacts
-      #   uses: actions/download-artifact@v5.0.0
-      #   with:
-      #     pattern: "merged-coverage-*"
-      #     path: artifacts
-      #     merge-multiple: true
 
       - name: Merge coverage files and convert to xml
         run: |
