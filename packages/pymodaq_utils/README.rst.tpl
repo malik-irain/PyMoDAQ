@@ -1,4 +1,4 @@
-PyMoDAQ Utils
+PyMoDAQ utils
 #############
 
 .. image:: https://img.shields.io/pypi/v/pymodaq_utils.svg

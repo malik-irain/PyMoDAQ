@@ -4,7 +4,7 @@ PyMoDAQ
 .. image:: https://img.shields.io/pypi/v/pymodaq.svg
    :target: https://pypi.org/project/pymodaq/
    :alt: Latest Version
-
+ 
 .. image:: https://readthedocs.org/projects/pymodaq/badge/?version={{BRANCH_NAME}}
    :target: https://pymodaq.readthedocs.io/en/stable/?badge={{BRANCH_NAME}}
    :alt: Documentation Status
