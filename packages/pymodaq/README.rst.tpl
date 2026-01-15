@@ -1,6 +1,7 @@
 PyMoDAQ
 #######
 
+
 .. image:: https://img.shields.io/pypi/v/pymodaq.svg
    :target: https://pypi.org/project/pymodaq/
    :alt: Latest Version

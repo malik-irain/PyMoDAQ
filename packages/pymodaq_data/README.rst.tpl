@@ -1,4 +1,4 @@
-PyMoDAQ data
+PyMoDAQ Data
 ############
 
 .. image:: https://img.shields.io/pypi/v/pymodaq_data.svg

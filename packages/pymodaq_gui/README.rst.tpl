@@ -1,6 +1,6 @@
 PyMoDAQ GUI
 ###########
- 
+
 .. image:: https://img.shields.io/pypi/v/pymodaq_gui.svg
    :target: https://pypi.org/project/pymodaq_gui/
    :alt: Latest Version
