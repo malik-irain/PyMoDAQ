@@ -32,7 +32,7 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-            /* ================================================================================= */
+           /* ================================================================================= */
             /* ================================================================================= */
             /* =================================== Context ===================================== */
             /* ================================================================================= */
@@ -58,28 +58,29 @@ jobs:
             //Sleep `seconds` seconds (works with floats)
             const sleep = (seconds) => new Promise(r => setTimeout(r, seconds * 1000));
 
-            //Check if a json object contains something
+            //Check if a json object contains something or is just {}
             const is_empty = (json) => Object.keys(json).length === 0;
 
-            //List all "Test for <package>" runs for the current event
+            // List all "Test for <package>" runs for each package in packages.
+            // If strict is true, only _event is considered
+            // Otherwise a priority based search strategy is made
             const get_corresponding_test_runs = async (packages, _event=event, strict=false) => {
               const test_runs = {};
-
-
-              // Define the filter strategies in order as it's only triggered by changes
+            
+              
               const base_strategies = [
-                {branch : branch, head_sha: sha, event : _event }, // Runs that are triggered by any modification on this branch from this event
-                {branch : branch, head_sha: sha },        // Then we try with the same commit but different event
-                {branch : branch},                        // Then anything else, as if no run was triggered, the code wasn't changed
-                {}                                        // Otherwise anything else, as if there was no triggered run on the commit 
+                {branch : branch, head_sha: sha, event : _event }, // Runs directly triggered by this event
+                {branch : branch, head_sha: sha },                 // Runs from the same commit 
+                {branch : branch},                                 // Runs from the same branch
+                {}                                                 // Any run
               ];
 
+              // strict => we only want runs triggered by this event so, only the first strategy
               const strategies = strict ? [base_strategies[0]] : base_strategies;
 
               for (const package of packages) {
                 let run = null;
-
-                // Try each strategy untila run is found
+                // Try each strategy until a run is found
                 for (const strategy of strategies) {
                   const { data } = await github.rest.actions.listWorkflowRunsForRepo({
                     owner : owner,
@@ -97,7 +98,7 @@ jobs:
               return test_runs;
             };
 
-            // Wait `attempts` times for `seconds` seconds that `run_id` run is over
+            // Wait `attempts` times for `seconds` seconds for `run_id` run to complete
             // return null if timed out.  
             const wait_for_run_completion = async (run_id, seconds = 60, attempts=10) => {
               let i = 0;
@@ -116,7 +117,7 @@ jobs:
               return null;
             };
 
-            // Return a workflow by its name
+            // Return a workflow from its name
             const get_workflow_by_name = async (name) => {
               const { data: workflows } = await github.rest.actions.listRepoWorkflows({
                 owner: owner,
@@ -127,6 +128,8 @@ jobs:
             };
 
 
+            // Download and save an artifact as zip file from its name.
+            // It is saved in the globally defined location `artifact_save_base_path`
             const save_artifact = async (artifact) => {
               const {data : artifact_data } = await github.rest.actions.downloadArtifact({
                 owner : owner,
@@ -149,7 +152,9 @@ jobs:
 
 
             //Create artifact download folder
-            if (!fs.existsSync(artifact_save_base_path)) fs.mkdirSync(artifact_save_base_path, { recursive: true });
+            if (!fs.existsSync(artifact_save_base_path)){
+              fs.mkdirSync(artifact_save_base_path, {recursive: true});
+            }
 
             //Wait 10 seconds so that we're "sure" that everything else is started
             await sleep(10);
@@ -181,7 +186,7 @@ jobs:
             // For each package_name, get the corresponding run, 
             // and check if one of its artifact is "merged-coverage-<package-name>"
             // If a package doesn't have an artifact, keep track of it
-            // Otherwise, download it
+            // Otherwise, download and save it
             const packages_without_coverage_artifact = [];
             for (const package of packages) {
               console.log(`Looking for artifacts in ${package}`)
@@ -209,7 +214,7 @@ jobs:
             for (const package of packages_without_coverage_artifact) {
               console.log(`Triggering test for ${package}...`);
 
-              
+              //Start the workflow
               const workflow = await get_workflow_by_name(`Test for ${package}`);
               if (workflow) {
                 await github.rest.actions.createWorkflowDispatch({
@@ -219,7 +224,9 @@ jobs:
                   ref : branch
                 });
 
-                for (let i = 0; i < 30; i++) {
+                //Try to get the run corresponding to the started workflow
+                // by polling the API each 10 seconds. 
+                for (let i = 0; i < 60; i++) {
                   await sleep(10);
                   const runs = await get_corresponding_test_runs([package], _event='workflow_dispatch', strict=true);
                   if (runs[package]) {
@@ -234,6 +241,7 @@ jobs:
               }
             }
 
+            //Wait for any triggered run
             if (!is_empty(triggered_runs)){
               // Sleep for 10 minutes should be enough for all test runs to be over
               await sleep(10*60);
@@ -267,6 +275,7 @@ jobs:
                 }
               }
             }
+
 
       - name: Merge coverage files and convert to xml
         run: |
