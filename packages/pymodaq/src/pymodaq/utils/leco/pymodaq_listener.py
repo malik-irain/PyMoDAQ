@@ -270,10 +270,18 @@ class PymodaqListener(Listener):
 
     def stop_listen(self) -> None:
         super().stop_listen()
+        import sys
+        from pymodaq_utils.logger import set_logger, get_module_name
+        logger = set_logger(get_module_name(__file__))
+
         try:
-            self.thread.join(timeout=5.0)  # wait for ZMQ poll loop to exit
+
+            msg = f"Thread is {'' if self.thread.is_alive() else 'not '}alive"
+            print(msg, file=sys.stderr)
+            logger.critical(msg)
         except AttributeError:
-            pass # In case there's no thread
+            logger.critical("No thread")
+            print(f"No thread", file=sys.stderr)
         try:
             del self.message_handler
             del self.communicator
