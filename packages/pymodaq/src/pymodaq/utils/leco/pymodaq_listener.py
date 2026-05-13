@@ -270,7 +270,20 @@ class PymodaqListener(Listener):
 
     def stop_listen(self) -> None:
         super().stop_listen()
+        import sys
+        from pymodaq_utils.logger import set_logger, get_module_name
+        logger = set_logger(get_module_name(__file__))
+
         try:
+
+            msg = f"Thread is {'' if self.thread.is_alive() else 'not '}alive"
+            print(msg, file=sys.stderr)
+            logger.critical(msg)
+        except AttributeError:
+            logger.critical("No thread")
+            print(f"No thread", file=sys.stderr)
+        try:
+            del self.message_handler
             del self.communicator
         except AttributeError:
             pass
@@ -478,7 +491,7 @@ class LECOComponentMixin:
             self._leco_commands_signal.connect(self._leco_client.queue_command)
             self._leco_client.start_listen()
         else:
-            self._leco_commands_signal.emit(ThreadCommand(LECOCommands.QUIT))
+            self._leco_client.stop_listen()
             try:
                 self._leco_commands_signal.disconnect(self._leco_client.queue_command)
             except TypeError:
